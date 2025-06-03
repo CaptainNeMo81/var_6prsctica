@@ -1,14 +1,18 @@
-# Используем официальный образ с GCC (для компиляции C++)
-FROM gcc:latest
+# Многостадийная сборка для уменьшения размера
+FROM gcc:latest as builder
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
-
-# Копируем исходный код
-COPY . .
-
-# Компилируем программу (замените main.cpp на ваш исходный файл)
+COPY app.cpp .
 RUN g++ -o myapp app.cpp
 
-# Запускаем приложение (если нужно)
+# Финальный образ
+FROM ubuntu:20.04
+WORKDIR /app
+COPY --from=builder /app/myapp .
+
+# Установка только необходимых зависимостей
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libstdc++6 && \
+    rm -rf /var/lib/apt/lists/*
+
 CMD ["./myapp"]
