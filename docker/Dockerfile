@@ -1,7 +1,14 @@
-FROM python:3.12.3-alpine
+# Используем официальный образ с GCC (для компиляции C++)
+FROM gcc:latest
+
+# Устанавливаем рабочую директорию
 WORKDIR /app
-COPY requirements.txt /app
-COPY main.py /app
-RUN pip install -r requirements.txt
-ENTRYPOINT [ "python" ]
-CMD [ "main.py" ]
+
+# Копируем исходный код
+COPY . .
+
+# Компилируем программу (замените main.cpp на ваш исходный файл)
+RUN g++ -o myapp app.cpp
+
+# Запускаем приложение (если нужно)
+CMD ["./myapp"]
