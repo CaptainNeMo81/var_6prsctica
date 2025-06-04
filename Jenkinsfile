@@ -13,7 +13,7 @@ pipeline {
                             transfers: [
                                 sshTransfer(
                                     execCommand: """
-                                        chmod -R 755 /opt/app/${params.ENV}
+                                        chmod -R 755 /opt/app/dev
                                         # Другие команды...
                                     """
                                 )
