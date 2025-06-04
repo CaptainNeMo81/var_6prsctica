@@ -1,9 +1,15 @@
 pipeline {
     agent any
-    parameters {
-        string(name: 'ENV', defaultValue: 'dev', description: 'Target environment (dev, prod, etc.)')
-    }
     stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Prepare') {
+            steps {
+                sh 'ls -la > filelist.txt'
+                archiveArtifacts 'filelist.txt'
+            }
+        }
         stage('Deploy') {
             steps {
                 sshPublisher(
@@ -12,14 +18,13 @@ pipeline {
                             configName: "nemoserv",
                             transfers: [
                                 sshTransfer(
-                                    // 1. Копируем файлы из workspace Jenkins на сервер
-                                    sourceFiles: "**/*",              // Что копируем (все файлы из workspace)
-                                    remoteDirectory: "/opt/app/dev",  // Куда копируем
-                                    // 2. Выполняем команды после копирования
+                                    sourceFiles: "**/*",
+                                    remoteDirectory: "/opt/app/dev",
                                     execCommand: """
-                                        echo "Файлы скопированы в /opt/app/dev/"
-                                        ls -la /opt/app/dev           // Проверим содержимое
-                                        chmod -R 755 /opt/app/dev     // Даём права
+                                        mkdir -p /opt/app/dev
+                                        chmod -R 755 /opt/app/dev
+                                        echo 'Деплой успешен!'
+                                        ls -la /opt/app/dev
                                     """
                                 )
                             ]
