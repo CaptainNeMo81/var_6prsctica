@@ -1,18 +1,6 @@
-# Многостадийная сборка для уменьшения размера
-FROM gcc:latest as builder
-
+FROM python:3.10
 WORKDIR /app
-COPY app.cpp .
-RUN g++ -o myapp app.cpp
+COPY . .
+RUN pip install flask
+CMD ["python", "app.py"]
 
-# Финальный образ
-FROM ubuntu:20.04
-WORKDIR /app
-COPY --from=builder /app/myapp .
-
-# Установка только необходимых зависимостей
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libstdc++6 && \
-    rm -rf /var/lib/apt/lists/*
-
-CMD ["./myapp"]
