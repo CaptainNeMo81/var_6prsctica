@@ -13,8 +13,9 @@ pipeline {
                             transfers: [
                                 sshTransfer(
                                     execCommand: """
-                                        chmod -R 755 /opt/app/
-                                        # Другие команды...
+                                        mkdir -p /opt/app/dev || echo "Directory already exists"
+                                        chmod -R 755 /opt/app/dev || echo "Failed to set permissions"
+                                        echo "Deployment to ${params.ENV} completed!"
                                     """
                                 )
                             ]
