@@ -1,52 +1,60 @@
 pipeline {
     agent any
-    options {
-        timeout(time: 10, unit: 'MINUTES')  // Максимальное время выполнения
+
+    parameters {
+        choice(
+            name: 'ENV',
+            choices: ['dev', 'prod'],
+            description: 'Куда деплоить?'
+        )
     }
+
     stages {
-        stage('Checkout') {
+        stage('Подготовка') {
             steps {
-                checkout([$class: 'GitSCM', 
-                         branches: [[name: '*/main']],
-                         extensions: [[$class: 'CloneOption', timeout: 3]],  // Таймаут 3 мин
-                         userRemoteConfigs: [[url: 'https://github.com/CaptainNeMo81/var_6prsctica.git']]
-                ])
-                sh 'ls -la > filelist.txt'  // Сохраняем список файлов
-                archiveArtifacts 'filelist.txt'  // Сохраняем артефакт
+                echo "🔹 Деплой в ${params.ENV} на nemoserv:/opt/app/${params.ENV}"
+                cleanWs()  // Очистка workspace
             }
         }
-        stage('Deploy') {
+
+        stage('Копирование файлов') {
             steps {
                 script {
-                    try {
-                        sshPublisher(
-                            publishers: [
-                                sshPublisherDesc(
-                                    configName: "nemoserv",
-                                    verbose: true,  // Подробный лог
-                                    transfers: [
-                                        sshTransfer(
-                                            sourceFiles: "**/*",
-                                            removePrefix: "",  // Важно для корректного копирования
-                                            remoteDirectory: "/opt/app/dev",
-                                            execCommand: """
-                                                echo '### DEBUG ###'
-                                                whoami
-                                                pwd
-                                                ls -la /opt/app/dev
-                                                chmod -R 755 /opt/app/dev
-                                            """
-                                        )
-                                    ]
-                                )
-                            ]
-                        )
-                    } catch (e) {
-                        echo "Ошибка деплоя: ${e}"
-                        currentBuild.result = 'FAILURE'
+                    // Проверка, что параметр ENV задан
+                    if (!params.ENV) {
+                        error("Параметр ENV не выбран!")
                     }
+
+                    // Копирование через SSH
+                    sshPublisher(
+                        publishers: [
+                            sshPublisherDesc(
+                                configName: 'nemoserv-ssh',  // Должен быть настроен в Jenkins
+                                transfers: [
+                                    sshTransfer(
+                                        sourceFiles: '**/*',  // Все файлы из репозитория
+                                        removePrefix: '',      // Не обрезать пути
+                                        remoteDirectory: "/opt/app/${params.ENV}",
+                                        execCommand: """
+                                            echo '✅ Файлы скопированы в /opt/app/${params.ENV}'
+                                            chmod -R 755 /opt/app/${params.ENV}
+                                        """
+                                    )
+                                ]
+                            )
+                        ]
+                    )
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 Успешный деплой в ${params.ENV}!"
+        }
+        failure {
+            echo "❌ Ошибка деплоя в ${params.ENV}"
         }
     }
 }
