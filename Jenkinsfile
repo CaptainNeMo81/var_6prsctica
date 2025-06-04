@@ -1,34 +1,51 @@
 pipeline {
     agent any
+    options {
+        timeout(time: 10, unit: 'MINUTES')  // Максимальное время выполнения
+    }
     stages {
         stage('Checkout') {
             steps {
-                checkout scm  // Клонируем репозиторий
-                sh 'ls -la'  // Проверяем, какие файлы есть в workspace
+                checkout([$class: 'GitSCM', 
+                         branches: [[name: '*/main']],
+                         extensions: [[$class: 'CloneOption', timeout: 3]],  // Таймаут 3 мин
+                         userRemoteConfigs: [[url: 'https://github.com/CaptainNeMo81/var_6prsctica.git']]
+                ])
+                sh 'ls -la > filelist.txt'  // Сохраняем список файлов
+                archiveArtifacts 'filelist.txt'  // Сохраняем артефакт
             }
         }
         stage('Deploy') {
             steps {
-                sshPublisher(
-                    publishers: [
-                        sshPublisherDesc(
-                            configName: "nemoserv",
-                            transfers: [
-                                sshTransfer(
-                                    // Указываем, какие файлы копировать
-                                    sourceFiles: "**/*",              // Все файлы из workspace
-                                    remoteDirectory: "/opt/app/dev",  // Куда копировать на сервере
-                                    // Команды после копирования
-                                    execCommand: """
-                                        echo "=== Файлы скопированы ==="
-                                        ls -la /opt/app/dev           // Проверим содержимое
-                                        chmod -R 755 /opt/app/dev     // Даём права
-                                    """
+                script {
+                    try {
+                        sshPublisher(
+                            publishers: [
+                                sshPublisherDesc(
+                                    configName: "nemoserv",
+                                    verbose: true,  // Подробный лог
+                                    transfers: [
+                                        sshTransfer(
+                                            sourceFiles: "**/*",
+                                            removePrefix: "",  // Важно для корректного копирования
+                                            remoteDirectory: "/opt/app/dev",
+                                            execCommand: """
+                                                echo '### DEBUG ###'
+                                                whoami
+                                                pwd
+                                                ls -la /opt/app/dev
+                                                chmod -R 755 /opt/app/dev
+                                            """
+                                        )
+                                    ]
                                 )
                             ]
                         )
-                    ]
-                )
+                    } catch (e) {
+                        echo "Ошибка деплоя: ${e}"
+                        currentBuild.result = 'FAILURE'
+                    }
+                }
             }
         }
     }
