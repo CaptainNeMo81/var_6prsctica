@@ -12,10 +12,14 @@ pipeline {
                             configName: "nemoserv",
                             transfers: [
                                 sshTransfer(
+                                    // 1. Копируем файлы из workspace Jenkins на сервер
+                                    sourceFiles: "**/*",              // Что копируем (все файлы из workspace)
+                                    remoteDirectory: "/opt/app/dev",  // Куда копируем
+                                    // 2. Выполняем команды после копирования
                                     execCommand: """
-                                        mkdir -p /opt/app/dev || echo "Directory already exists"
-                                        chmod -R 755 /opt/app/dev || echo "Failed to set permissions"
-                                        echo "Deployment to ${params.ENV} completed!"
+                                        echo "Файлы скопированы в /opt/app/dev/"
+                                        ls -la /opt/app/dev           // Проверим содержимое
+                                        chmod -R 755 /opt/app/dev     // Даём права
                                     """
                                 )
                             ]
